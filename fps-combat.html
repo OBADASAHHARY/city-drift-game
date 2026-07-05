@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔫 Combat FPS - لعبة القتال</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; overflow: hidden; background: #000; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        
+        #hud {
+            position: fixed;
+            color: #0f0;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 0 10px #0f0;
+            z-index: 100;
+        }
+        
+        #healthBar { top: 20px; left: 20px; }
+        .bar-label { color: #0f0; margin-bottom: 5px; }
+        .bar { width: 200px; height: 20px; background: #111; border: 2px solid #0f0; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, #f00, #0f0); transition: width 0.3s; }
+        
+        #armorBar { top: 80px; left: 20px; }
+        .armor-fill { background: linear-gradient(90deg, #aaa, #0ff) !important; }
+        
+        #ammoInfo { top: 140px; left: 20px; color: #ffff00; }
+        
+        #weaponInfo { top: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 15px; border: 2px solid #0f0; border-radius: 5px; }
+        
+        #scoreInfo { bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 15px; border: 2px solid #ffff00; border-radius: 5px; color: #ffff00; }
+        
+        #moneyInfo { bottom: 80px; right: 20px; color: #00ff00; font-size: 18px; }
+        
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 2px solid #0f0;
+            pointer-events: none;
+            z-index: 200;
+        }
+        .crosshair-line { position: absolute; background: #0f0; }
+        #ch-top { top: -15px; left: 14px; width: 2px; height: 12px; }
+        #ch-bottom { bottom: -15px; left: 14px; width: 2px; height: 12px; }
+        #ch-left { left: -15px; top: 14px; width: 12px; height: 2px; }
+        #ch-right { right: -15px; top: 14px; width: 12px; height: 2px; }
+        #ch-center { top: 14px; left: 14px; width: 2px; height: 2px; background: #f00; }
+        
+        #menu {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #1a0000, #330000);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        #menu.hidden { display: none; }
+        
+        #menu h1 {
+            font-size: 48px;
+            color: #f00;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #f00;
+        }
+        
+        #menu button {
+            padding: 15px 40px;
+            font-size: 18px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+            background: #f00;
+            color: #fff;
+        }
+        
+        #menu button:hover {
+            background: #ff0000;
+            box-shadow: 0 0 20px #f00;
+            transform: scale(1.05);
+        }
+        
+        #shopMenu {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+            overflow-y: auto;
+            border: 3px solid #ffff00;
+        }
+        
+        #shopMenu.show { display: flex; }
+        
+        .shop-header {
+            background: #ffff00;
+            color: #000;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .shop-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            flex-grow: 1;
+        }
+        
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #ffff00;
+            border-radius: 5px;
+            padding: 20px;
+            text-align: center;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        
+        .shop-item:hover {
+            background: rgba(255, 255, 0, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .item-name { font-size: 16px; font-weight: bold; margin-bottom: 10px; }
+        .item-price { color: #00ff00; font-size: 18px; margin: 10px 0; }
+        .item-stats { color: #0ff; font-size: 12px; margin: 10px 0; }
+        
+        .buy-btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+        
+        .buy-btn:hover { background: #00cc00; }
+        
+        .shop-footer {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            text-align: center;
+            border-top: 2px solid #ffff00;
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        #gameOverScreen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 998;
+        }
+        
+        #gameOverScreen.show { display: flex; }
+        
+        .game-over-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .game-over-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #f00;
+        }
+        
+        .game-over-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        .stat-line { margin: 10px 0; color: #0f0; }
+        
+        .game-over-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .game-over-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        
+        .btn-restart { background: #00ff00; color: #000; }
+        .btn-restart:hover { background: #00cc00; }
+        
+        .btn-menu { background: #ff0000; color: #fff; }
+        .btn-menu:hover { background: #cc0000; }
+        
+        #controls {
+            position: fixed;
+            bottom: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #0f0;
+            padding: 15px;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .control-line { margin: 3px 0; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="crosshair">
+        <div id="ch-top" class="crosshair-line"></div>
+        <div id="ch-bottom" class="crosshair-line"></div>
+        <div id="ch-left" class="crosshair-line"></div>
+        <div id="ch-right" class="crosshair-line"></div>
+        <div id="ch-center" class="crosshair-line"></div>
+    </div>
+    
+    <div id="hud">
+        <div id="healthBar">
+            <div class="bar-label">❤️ Health: <span id="healthValue">100</span>/100</div>
+            <div class="bar"><div class="bar-fill" id="healthFill" style="width: 100%"></div></div>
+        </div>
+        
+        <div id="armorBar">
+            <div class="bar-label">🛡️ Armor: <span id="armorValue">0</span>/100</div>
+            <div class="bar"><div class="bar-fill armor-fill" id="armorFill" style="width: 0%"></div></div>
+        </div>
+        
+        <div id="ammoInfo">🔫 Ammo: <span id="ammoValue">30</span> / <span id="ammoReserve">120</span></div>
+        
+        <div id="controls">
+            <div><b>🎮 CONTROLS:</b></div>
+            <div class="control-line">WASD - تحرك</div>
+            <div class="control-line">SPACE - قفز</div>
+            <div class="control-line">MOUSE - أنظر</div>
+            <div class="control-line">CLICK - أطلق النار</div>
+            <div class="control-line">1,2,3 - السلاح</div>
+            <div class="control-line">E - المتجر</div>
+            <div class="control-line">R - أعد التحميل</div>
+        </div>
+    </div>
+    
+    <div id="weaponInfo">
+        <div id="weaponName">🔫 Pistol</div>
+        <div id="weaponDamage">Damage: 25</div>
+        <div id="weaponFireRate">Fire Rate: 0.1s</div>
+    </div>
+    
+    <div id="moneyInfo">💰 $<span id="moneyValue">2000</span></div>
+    
+    <div id="scoreInfo">
+        <div>👾 Kills: <span id="killCount">0</span></div>
+        <div>⭐ Score: <span id="scoreValue">0</span></div>
+    </div>
+    
+    <div id="menu">
+        <h1>🔫 COMBAT FPS</h1>
+        <button onclick="game.startGame()">▶️ ابدأ اللعبة</button>
+    </div>
+    
+    <div id="shopMenu">
+        <div class="shop-header">🏪 متجر الأسلحة والدروع</div>
+        <div class="shop-content" id="shopContent"></div>
+        <div class="shop-footer">
+            💰 الأموال: $<span id="shopMoney">2000</span>
+            <button class="buy-btn" style="margin-top: 10px; background: #ff0000;" onclick="game.closeShop()">أغلق المتجر</button>
+        </div>
+    </div>
+    
+    <div id="gameOverScreen">
+        <div class="game-over-content">
+            <div class="game-over-title">Game Over</div>
+            <div class="game-over-stats">
+                <div class="stat-line">👾 Kills: <span id="finalKills">0</span></div>
+                <div class="stat-line">⭐ Score: <span id="finalScore">0</span></div>
+                <div class="stat-line">💰 Earned: $<span id="finalMoney">0</span></div>
+            </div>
+            <div class="game-over-buttons">
+                <button class="game-over-btn btn-restart" onclick="location.reload()">🔄 لعب مجددا</button>
+                <button class="game-over-btn btn-menu" onclick="game.goToMenu()">🏠 الرئيسية</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class CombatGame {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x1a1a2e);
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 1.7, 0);
+                
+                this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                
+                this.gameRunning = false;
+                this.player = {
+                    health: 100,
+                    maxHealth: 100,
+                    armor: 0,
+                    maxArmor: 100,
+                    money: 2000,
+                    kills: 0,
+                    deaths: 0,
+                    score: 0,
+                    velocity: new THREE.Vector3(0, 0, 0),
+                    canJump: true
+                };
+                
+                this.weapons = [
+                    { name: 'Pistol', damage: 25, fireRate: 0.1, ammo: 30, reserve: 120, range: 100 },
+                    { name: 'Rifle', damage: 50, fireRate: 0.15, ammo: 25, reserve: 100, range: 200 },
+                    { name: 'Shotgun', damage: 80, fireRate: 0.5, ammo: 8, reserve: 40, range: 50 }
+                ];
+                
+                this.currentWeapon = 0;
+                this.lastShotTime = 0;
+                this.enemies = [];
+                this.bullets = [];
+                this.keys = {};
+                this.mousePos = { x: 0, y: 0 };
+                this.shopOpen = false;
+                
+                this.setupControls();
+                this.setupShop();
+            }
+            
+            setupControls() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    if (e.key === 'e' || e.key === 'E') this.toggleShop();
+                    if (e.key === 'r' || e.key === 'R') this.reload();
+                    if (e.key === '1') this.currentWeapon = 0;
+                    if (e.key === '2') this.currentWeapon = 1;
+                    if (e.key === '3') this.currentWeapon = 2;
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+                
+                window.addEventListener('click', () => {
+                    if (this.gameRunning && !this.shopOpen) this.shoot();
+                });
+                
+                window.addEventListener('resize', () => this.onResize());
+            }
+            
+            setupShop() {
+                const items = [
+                    { name: '🔫 Rifle', price: 1500, type: 'weapon', id: 1, damage: 50, fireRate: 0.15 },
+                    { name: '🔫 Shotgun', price: 2500, type: 'weapon', id: 2, damage: 80, fireRate: 0.5 },
+                    { name: '🛡️ Armor Pack', price: 800, type: 'armor', armor: 100 },
+                    { name: '❤️ Health Pack', price: 500, type: 'health', health: 50 },
+                    { name: '📦 Ammo Pack', price: 300, type: 'ammo', ammo: 100 }
+                ];
+                
+                const shopContent = document.getElementById('shopContent');
+                items.forEach((item, idx) => {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'shop-item';
+                    itemEl.innerHTML = `
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-price">$${item.price}</div>
+                        <div class="item-stats">${item.damage ? 'Damage: ' + item.damage : ''}
+                        ${item.armor ? 'Armor: ' + item.armor : ''}
+                        ${item.health ? 'Health: ' + item.health : ''}
+                        ${item.ammo ? 'Ammo: ' + item.ammo : ''}</div>
+                        <button class="buy-btn" onclick="game.buyItem(${idx})">اشتري</button>
+                    `;
+                    shopContent.appendChild(itemEl);
+                });
+            }
+            
+            startGame() {
+                document.getElementById('menu').classList.add('hidden');
+                this.gameRunning = true;
+                this.setupScene();
+                this.spawnEnemies();
+                this.animate();
+            }
+            
+            setupScene() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 50, 50);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                const groundGeom = new THREE.PlaneGeometry(200, 200);
+                const groundMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const ground = new THREE.Mesh(groundGeom, groundMat);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                this.createWalls();
+                this.createObjects();
+            }
+            
+            createWalls() {
+                const walls = [
+                    { pos: [100, 0, 0], size: [5, 15, 100] },
+                    { pos: [-100, 0, 0], size: [5, 15, 100] },
+                    { pos: [0, 0, 100], size: [100, 15, 5] },
+                    { pos: [0, 0, -100], size: [100, 15, 5] }
+                ];
+                
+                walls.forEach(wall => {
+                    const wallGeom = new THREE.BoxGeometry(...wall.size);
+                    const wallMat = new THREE.MeshLambertMaterial({ color: 0x666666 });
+                    const wallMesh = new THREE.Mesh(wallGeom, wallMat);
+                    wallMesh.position.set(...wall.pos);
+                    wallMesh.castShadow = true;
+                    this.scene.add(wallMesh);
+                });
+            }
+            
+            createObjects() {
+                for (let i = 0; i < 8; i++) {
+                    const x = (Math.random() - 0.5) * 150;
+                    const z = (Math.random() - 0.5) * 150;
+                    const objGeom = new THREE.BoxGeometry(3, 5, 3);
+                    const objMat = new THREE.MeshPhongMaterial({ color: 0xff6600 });
+                    const obj = new THREE.Mesh(objGeom, objMat);
+                    obj.position.set(x, 2.5, z);
+                    obj.castShadow = true;
+                    this.scene.add(obj);
+                }
+            }
+            
+            spawnEnemies() {
+                const spawnPoints = [
+                    [-80, 0, -80], [80, 0, -80], [-80, 0, 80], [80, 0, 80],
+                    [0, 0, -80], [0, 0, 80], [-80, 0, 0], [80, 0, 0]
+                ];
+                
+                spawnPoints.forEach(pos => {
+                    const enemy = this.createEnemy(pos);
+                    this.enemies.push(enemy);
+                });
+            }
+            
+            createEnemy(pos) {
+                const enemyGroup = new THREE.Group();
+                
+                const bodyGeom = new THREE.BoxGeometry(0.6, 1.8, 0.6);
+                const bodyMat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                const body = new THREE.Mesh(bodyGeom, bodyMat);
+                body.castShadow = true;
+                body.position.y = 0.9;
+                enemyGroup.add(body);
+                
+                const headGeom = new THREE.SphereGeometry(0.3, 8, 8);
+                const headMat = new THREE.MeshPhongMaterial({ color: 0xff6666 });
+                const head = new THREE.Mesh(headGeom, headMat);
+                head.castShadow = true;
+                head.position.y = 2.1;
+                enemyGroup.add(head);
+                
+                enemyGroup.position.set(...pos);
+                this.scene.add(enemyGroup);
+                
+                return {
+                    mesh: enemyGroup,
+                    health: 50,
+                    maxHealth: 50,
+                    target: this.camera.position,
+                    lastAttackTime: 0,
+                    speed: 0.1
+                };
+            }
+            
+            shoot() {
+                const now = Date.now() / 1000;
+                const weapon = this.weapons[this.currentWeapon];
+                
+                if (now - this.lastShotTime < weapon.fireRate) return;
+                if (weapon.ammo <= 0) return;
+                
+                weapon.ammo--;
+                this.lastShotTime = now;
+                
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(this.camera.quaternion);
+                
+                const bullet = {
+                    start: this.camera.position.clone(),
+                    direction: direction,
+                    range: weapon.range,
+                    damage: weapon.damage,
+                    age: 0
+                };
+                
+                this.bullets.push(bullet);
+                this.checkBulletHits(bullet);
+            }
+            
+            checkBulletHits(bullet) {
+                this.enemies.forEach(enemy => {
+                    const enemyPos = enemy.mesh.position;
+                    const toEnemy = enemyPos.clone().sub(bullet.start);
+                    const distToEnemy = toEnemy.length();
+                    const angleToEnemy = Math.acos(toEnemy.dot(bullet.direction) / (toEnemy.length() * bullet.direction.length()));
+                    
+                    if (distToEnemy < bullet.range && angleToEnemy < 0.1) {
+                        enemy.health -= bullet.damage;
+                        
+                        if (enemy.health <= 0) {
+                            this.removeEnemy(enemy);
+                            this.player.kills++;
+                            this.player.score += 100;
+                            this.player.money += 200;
+                            
+                            if (this.enemies.length === 0) this.spawnEnemies();
+                        }
+                    }
+                });
+            }
+            
+            removeEnemy(enemy) {
+                this.scene.remove(enemy.mesh);
+                this.enemies = this.enemies.filter(e => e !== enemy);
+            }
+            
+            updatePlayer() {
+                const moveSpeed = 0.2;
+                const direction = new THREE.Vector3(0, 0, 0);
+                
+                if (this.keys['w']) direction.z -= moveSpeed;
+                if (this.keys['s']) direction.z += moveSpeed;
+                if (this.keys['a']) direction.x -= moveSpeed;
+                if (this.keys['d']) direction.x += moveSpeed;
+                
+                direction.applyQuaternion(this.camera.quaternion);
+                direction.y = 0;
+                
+                this.camera.position.add(direction);
+                
+                if (this.keys[' '] && this.player.canJump) {
+                    this.player.velocity.y = 0.2;
+                    this.player.canJump = false;
+                }
+                
+                this.player.velocity.y -= 0.01;
+                this.camera.position.y += this.player.velocity.y;
+                
+                if (this.camera.position.y < 1.7) {
+                    this.camera.position.y = 1.7;
+                    this.player.velocity.y = 0;
+                    this.player.canJump = true;
+                }
+                
+                this.camera.position.x = Math.max(-95, Math.min(95, this.camera.position.x));
+                this.camera.position.z = Math.max(-95, Math.min(95, this.camera.position.z));
+            }
+            
+            updateEnemies() {
+                this.enemies.forEach(enemy => {
+                    const direction = this.camera.position.clone().sub(enemy.mesh.position);
+                    const distance = direction.length();
+                    
+                    if (distance > 0.1) {
+                        direction.normalize();
+                        enemy.mesh.position.add(direction.multiplyScalar(enemy.speed));
+                    }
+                    
+                    const now = Date.now() / 1000;
+                    if (now - enemy.lastAttackTime > 1 && distance < 3) {
+                        this.player.health -= 10;
+                        enemy.lastAttackTime = now;
+                    }
+                });
+            }
+            
+            updateHUD() {
+                document.getElementById('healthValue').textContent = Math.max(0, Math.floor(this.player.health));
+                document.getElementById('healthFill').style.width = (Math.max(0, this.player.health) / 100 * 100) + '%';
+                
+                document.getElementById('armorValue').textContent = Math.floor(this.player.armor);
+                document.getElementById('armorFill').style.width = (this.player.armor / 100 * 100) + '%';
+                
+                const weapon = this.weapons[this.currentWeapon];
+                document.getElementById('ammoValue').textContent = Math.max(0, weapon.ammo);
+                document.getElementById('ammoReserve').textContent = weapon.reserve;
+                
+                document.getElementById('weaponName').textContent = '🔫 ' + weapon.name;
+                document.getElementById('weaponDamage').textContent = 'Damage: ' + weapon.damage;
+                document.getElementById('weaponFireRate').textContent = 'Fire Rate: ' + weapon.fireRate + 's';
+                
+                document.getElementById('moneyValue').textContent = Math.floor(this.player.money);
+                document.getElementById('killCount').textContent = this.player.kills;
+                document.getElementById('scoreValue').textContent = this.player.score;
+                document.getElementById('shopMoney').textContent = Math.floor(this.player.money);
+            }
+            
+            toggleShop() {
+                this.shopOpen = !this.shopOpen;
+                document.getElementById('shopMenu').classList.toggle('show');
+            }
+            
+            closeShop() {
+                this.shopOpen = false;
+                document.getElementById('shopMenu').classList.remove('show');
+            }
+            
+            buyItem(idx) {
+                const items = [
+                    { name: 'Rifle', price: 1500, type: 'weapon', id: 1 },
+                    { name: 'Shotgun', price: 2500, type: 'weapon', id: 2 },
+                    { name: 'Armor', price: 800, type: 'armor', armor: 100 },
+                    { name: 'Health', price: 500, type: 'health', health: 50 },
+                    { name: 'Ammo', price: 300, type: 'ammo', ammo: 100 }
+                ];
+                
+                const item = items[idx];
+                if (this.player.money >= item.price) {
+                    this.player.money -= item.price;
+                    
+                    if (item.type === 'armor') this.player.armor = Math.min(100, this.player.armor + item.armor);
+                    if (item.type === 'health') this.player.health = Math.min(100, this.player.health + item.health);
+                    if (item.type === 'ammo') this.weapons[this.currentWeapon].reserve += item.ammo;
+                    if (item.type === 'weapon') this.currentWeapon = item.id;
+                }
+            }
+            
+            reload() {
+                const weapon = this.weapons[this.currentWeapon];
+                const needed = weapon.ammo - (30 - weapon.ammo);
+                if (weapon.reserve >= needed) {
+                    weapon.reserve -= needed;
+                    weapon.ammo = 30;
+                }
+            }
+            
+            goToMenu() {
+                this.gameRunning = false;
+                document.getElementById('menu').classList.remove('hidden');
+                document.getElementById('gameOverScreen').classList.remove('show');
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                if (!this.gameRunning) {
+                    this.renderer.render(this.scene, this.camera);
+                    return;
+                }
+                
+                this.updatePlayer();
+                this.updateEnemies();
+                this.updateHUD();
+                
+                if (this.player.health <= 0) {
+                    this.gameRunning = false;
+                    document.getElementById('gameOverScreen').classList.add('show');
+                    document.getElementById('finalKills').textContent = this.player.kills;
+                    document.getElementById('finalScore').textContent = this.player.score;
+                    document.getElementById('finalMoney').textContent = Math.floor(this.player.money);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+        
+        const game = new CombatGame();
+    </script>
+</body>
+</html>
