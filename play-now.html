@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>City Drift Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100vw; height: 100vh; overflow: hidden; background: #000; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #startBtn { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 20px 40px; font-size: 24px; background: #00d4ff; color: #000; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; z-index: 1000; }
+        #startBtn:hover { background: #0099cc; transform: translate(-50%, -50%) scale(1.1); }
+        #startBtn.hidden { display: none; }
+    </style>
+</head>
+<body>
+    <button id="startBtn">▶️ ابدأ اللعبة</button>
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, player, gameActive = false;
+        const keys = {};
+
+        document.getElementById('startBtn').addEventListener('click', initGame);
+
+        function initGame() {
+            document.getElementById('startBtn').classList.add('hidden');
+            gameActive = true;
+            
+            if (!scene) {
+                setupScene();
+            }
+            animate();
+        }
+
+        function setupScene() {
+            const canvas = document.getElementById('canvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.set(0, 50, 100);
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(100, 200, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Sky
+            const skyGeometry = new THREE.SphereGeometry(2000, 32, 32);
+            const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb });
+            const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+            scene.add(sky);
+
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(2000, 2000);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x2d5016 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Roads
+            const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            
+            const roadH = new THREE.Mesh(new THREE.PlaneGeometry(1500, 80), roadMaterial);
+            roadH.rotation.x = -Math.PI / 2;
+            roadH.position.y = 0.01;
+            scene.add(roadH);
+            
+            const roadV = new THREE.Mesh(new THREE.PlaneGeometry(80, 1500), roadMaterial);
+            roadV.rotation.x = -Math.PI / 2;
+            roadV.position.y = 0.01;
+            scene.add(roadV);
+
+            // Buildings
+            const buildingColors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0x5f27cd];
+            for (let i = 0; i < 12; i++) {
+                const x = (Math.random() - 0.5) * 800;
+                const z = (Math.random() - 0.5) * 800;
+                if (Math.abs(x) < 150 || Math.abs(z) < 150) continue;
+                
+                const height = Math.random() * 200 + 50;
+                const buildingGeometry = new THREE.BoxGeometry(100, height, 100);
+                const buildingMaterial = new THREE.MeshPhongMaterial({ color: buildingColors[Math.floor(Math.random() * buildingColors.length)] });
+                const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                building.position.set(x, height / 2, z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                scene.add(building);
+            }
+
+            // Create Player Car
+            createPlayerCar();
+
+            // Input handling
+            window.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.key.toLowerCase()] = false;
+            });
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createPlayerCar() {
+            const carGroup = new THREE.Group();
+            
+            // Car body
+            const bodyGeometry = new THREE.BoxGeometry(20, 12, 45);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            carGroup.add(body);
+
+            // Car windows
+            const windowGeometry = new THREE.BoxGeometry(18, 8, 10);
+            const windowMaterial = new THREE.MeshPhongMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.6 });
+            const window1 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window1.position.z = -12;
+            carGroup.add(window1);
+
+            // Car wheels
+            const wheelGeometry = new THREE.CylinderGeometry(7, 7, 10, 16);
+            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            
+            for (let i = 0; i < 4; i++) {
+                const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                const side = i % 2 === 0 ? -14 : 14;
+                const position = i < 2 ? -15 : 15;
+                wheel.position.set(side, 9, position);
+                carGroup.add(wheel);
+            }
+
+            carGroup.position.set(0, 15, 0);
+            carGroup.castShadow = true;
+            scene.add(carGroup);
+
+            player = {
+                mesh: carGroup,
+                speed: 0,
+                maxSpeed: 150,
+                acceleration: 1,
+                friction: 0.08,
+                rotationSpeed: 0.05,
+                fuel: 100,
+                money: 1000
+            };
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (!gameActive || !player) {
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // Player controls
+            const accelerate = keys['w'] || keys['arrowup'] ? 1 : 0;
+            const decelerate = keys['s'] || keys['arrowdown'] ? 1 : 0;
+            const turnLeft = keys['a'] || keys['arrowleft'] ? 1 : 0;
+            const turnRight = keys['d'] || keys['arrowright'] ? 1 : 0;
+
+            // Update speed
+            player.speed += (accelerate - decelerate) * player.acceleration;
+            player.speed = Math.max(-50, Math.min(player.speed, player.maxSpeed));
+            player.speed *= (1 - player.friction);
+
+            // Update rotation
+            if (player.speed > 1) {
+                player.mesh.rotation.y += (turnLeft - turnRight) * player.rotationSpeed;
+            }
+
+            // Move player
+            const direction = new THREE.Vector3(0, 0, player.speed);
+            direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.mesh.rotation.y);
+            player.mesh.position.add(direction);
+
+            // Fuel consumption
+            if (accelerate > 0) {
+                player.fuel -= 0.1;
+            }
+            player.fuel = Math.max(0, Math.min(100, player.fuel));
+
+            // Boundaries
+            player.mesh.position.x = Math.max(-400, Math.min(400, player.mesh.position.x));
+            player.mesh.position.z = Math.max(-400, Math.min(400, player.mesh.position.z));
+
+            // Update camera to follow player
+            const playerPos = player.mesh.position;
+            const targetX = playerPos.x - Math.sin(player.mesh.rotation.y) * 80;
+            const targetY = playerPos.y + 40;
+            const targetZ = playerPos.z - Math.cos(player.mesh.rotation.y) * 80;
+
+            camera.position.x += (targetX - camera.position.x) * 0.1;
+            camera.position.y += (targetY - camera.position.y) * 0.1;
+            camera.position.z += (targetZ - camera.position.z) * 0.1;
+            camera.lookAt(playerPos.x, playerPos.y + 10, playerPos.z);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
