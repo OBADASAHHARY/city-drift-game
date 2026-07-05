@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏎️ City Drift Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; overflow: hidden; background: #000; }
+        #canvas { display: block; width: 100vw; height: 100vh; }
+        #menu { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a1a2e, #16213e); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        #menu.hidden { display: none; }
+        #menu h1 { font-size: 48px; color: #00d4ff; margin-bottom: 30px; text-shadow: 0 0 20px #00d4ff; }
+        #menu button { padding: 15px 40px; font-size: 18px; margin: 10px; cursor: pointer; border: none; border-radius: 5px; transition: 0.3s; }
+        .btn-play { background: linear-gradient(135deg, #00d4ff, #0099cc); color: white; font-weight: bold; }
+        .btn-play:hover { transform: scale(1.05); box-shadow: 0 0 20px #00d4ff; }
+        #hud { position: fixed; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 5px; border-left: 4px solid #00d4ff; z-index: 100; }
+        .hud-item { margin: 5px 0; font-size: 14px; }
+        #speedometer { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.6); color: #00d4ff; padding: 15px; border-radius: 5px; z-index: 100; font-weight: bold; }
+        #controls { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,0.7); color: #00d4ff; padding: 15px; border-radius: 5px; font-size: 12px; border: 2px solid #00d4ff; z-index: 100; }
+        .control-line { margin: 3px 0; }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="menu">
+        <h1>🏎️ CITY DRIFT</h1>
+        <button class="btn-play" onclick="startGame()">▶️ العب الآن</button>
+    </div>
+
+    <div id="hud">
+        <div class="hud-item">السرعة: <span id="speed">0</span> km/h</div>
+        <div class="hud-item">الوقود: <span id="fuel">100</span>%</div>
+        <div class="hud-item">الأموال: $<span id="money">1000</span></div>
+    </div>
+
+    <div id="speedometer">
+        <div>🏎️ City Drift</div>
+        <div id="carName">City Runner</div>
+    </div>
+
+    <div id="controls">
+        <div><strong>التحكم:</strong></div>
+        <div class="control-line">⬆️ W - تسريع</div>
+        <div class="control-line">⬇️ S - فرملة</div>
+        <div class="control-line">⬅️ A - يسار</div>
+        <div class="control-line">➡️ D - يمين</div>
+    </div>
+
+    <script>
+        // City Drift - Complete Working Game
+        let scene, camera, renderer, player;
+        let gameRunning = false;
+        let keys = {};
+        let money = 1000;
+        let gameSpeed = 0;
+
+        function startGame() {
+            document.getElementById('menu').classList.add('hidden');
+            gameRunning = true;
+            if (!scene) {
+                initGame();
+            }
+            animate();
+        }
+
+        function initGame() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.set(0, 50, 100);
+
+            // Renderer
+            const canvas = document.getElementById('canvas');
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(100, 200, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Sky
+            const skyGeom = new THREE.SphereGeometry(2000, 32, 32);
+            const skyMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb });
+            const sky = new THREE.Mesh(skyGeom, skyMat);
+            scene.add(sky);
+
+            // Ground/Roads
+            const groundGeom = new THREE.PlaneGeometry(2000, 2000);
+            const groundMat = new THREE.MeshLambertMaterial({ color: 0x2d5016 });
+            const ground = new THREE.Mesh(groundGeom, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Main road horizontal
+            const roadH = new THREE.PlaneGeometry(1500, 80);
+            const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            const roadHmesh = new THREE.Mesh(roadH, roadMat);
+            roadHmesh.rotation.x = -Math.PI / 2;
+            roadHmesh.position.y = 0.01;
+            scene.add(roadHmesh);
+
+            // Main road vertical
+            const roadV = new THREE.PlaneGeometry(80, 1500);
+            const roadVmesh = new THREE.Mesh(roadV, roadMat);
+            roadVmesh.rotation.x = -Math.PI / 2;
+            roadVmesh.position.y = 0.01;
+            scene.add(roadVmesh);
+
+            // Buildings
+            const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0x5f27cd];
+            for (let i = 0; i < 12; i++) {
+                const x = (Math.random() - 0.5) * 800;
+                const z = (Math.random() - 0.5) * 800;
+                if (Math.abs(x) < 150 || Math.abs(z) < 150) continue;
+                
+                const height = Math.random() * 200 + 50;
+                const buildGeom = new THREE.BoxGeometry(100, height, 100);
+                const buildMat = new THREE.MeshPhongMaterial({ color: colors[Math.floor(Math.random() * colors.length)] });
+                const building = new THREE.Mesh(buildGeom, buildMat);
+                building.position.set(x, height / 2, z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                scene.add(building);
+            }
+
+            // Player Car
+            createPlayerCar();
+
+            // Traffic
+            createTraffic();
+
+            // Input
+            window.addEventListener('keydown', (e) => {
+                keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.key.toLowerCase()] = false;
+            });
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function createPlayerCar() {
+            const carGroup = new THREE.Group();
+            
+            // Car body
+            const bodyGeom = new THREE.BoxGeometry(20, 12, 45);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            carGroup.add(body);
+
+            // Windows
+            const windowGeom = new THREE.BoxGeometry(18, 8, 10);
+            const windowMat = new THREE.MeshPhongMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.6 });
+            const window1 = new THREE.Mesh(windowGeom, windowMat);
+            window1.position.set(0, 5, -12);
+            carGroup.add(window1);
+
+            // Wheels
+            const wheelGeom = new THREE.CylinderGeometry(7, 7, 10, 16);
+            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            
+            for (let i = 0; i < 4; i++) {
+                const wheel = new THREE.Mesh(wheelGeom, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                const side = i % 2 === 0 ? -14 : 14;
+                const pos = i < 2 ? -15 : 15;
+                wheel.position.set(side, 9, pos);
+                carGroup.add(wheel);
+            }
+
+            carGroup.position.set(0, 15, 0);
+            carGroup.castShadow = true;
+            scene.add(carGroup);
+
+            player = {
+                mesh: carGroup,
+                speed: 0,
+                maxSpeed: 150,
+                acceleration: 1,
+                friction: 0.08,
+                rotationSpeed: 0.05,
+                fuel: 100
+            };
+        }
+
+        function createTraffic() {
+            const trafficColors = [0xff0000, 0xffff00, 0x0000ff];
+            for (let i = 0; i < 6; i++) {
+                const x = (Math.random() - 0.5) * 600;
+                const z = (Math.random() - 0.5) * 600;
+                const color = trafficColors[Math.floor(Math.random() * trafficColors.length)];
+
+                const carGroup = new THREE.Group();
+                const bodyGeom = new THREE.BoxGeometry(18, 10, 40);
+                const bodyMat = new THREE.MeshPhongMaterial({ color: color });
+                const body = new THREE.Mesh(bodyGeom, bodyMat);
+                carGroup.add(body);
+
+                carGroup.position.set(x, 12, z);
+                carGroup.castShadow = true;
+                scene.add(carGroup);
+            }
+        }
+
+        function animate() {
+            if (!gameRunning) return;
+            requestAnimationFrame(animate);
+
+            // Player movement
+            if (player) {
+                const accel = keys['w'] || keys['arrowup'] ? 1 : 0;
+                const decel = keys['s'] || keys['arrowdown'] ? 1 : 0;
+                const left = keys['a'] || keys['arrowleft'] ? 1 : 0;
+                const right = keys['d'] || keys['arrowright'] ? 1 : 0;
+
+                player.speed += (accel - decel) * player.acceleration;
+                player.speed = Math.max(-50, Math.min(player.speed, player.maxSpeed));
+                player.speed *= (1 - player.friction);
+
+                if (player.speed > 1) {
+                    player.mesh.rotation.y += (left - right) * player.rotationSpeed;
+                }
+
+                // Move player
+                const direction = new THREE.Vector3(0, 0, player.speed);
+                direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.mesh.rotation.y);
+                player.mesh.position.add(direction);
+
+                // Fuel
+                if (accel > 0) player.fuel -= 0.1;
+                player.fuel = Math.max(0, Math.min(100, player.fuel));
+
+                // Boundaries
+                player.mesh.position.x = Math.max(-400, Math.min(400, player.mesh.position.x));
+                player.mesh.position.z = Math.max(-400, Math.min(400, player.mesh.position.z));
+
+                // Update HUD
+                document.getElementById('speed').textContent = Math.round(Math.abs(player.speed));
+                document.getElementById('fuel').textContent = Math.round(player.fuel);
+                document.getElementById('money').textContent = Math.round(money);
+                document.getElementById('carName').textContent = 'City Runner';
+
+                // Camera follow
+                const targetX = player.mesh.position.x - Math.sin(player.mesh.rotation.y) * 80;
+                const targetY = player.mesh.position.y + 40;
+                const targetZ = player.mesh.position.z - Math.cos(player.mesh.rotation.y) * 80;
+
+                camera.position.x += (targetX - camera.position.x) * 0.1;
+                camera.position.y += (targetY - camera.position.y) * 0.1;
+                camera.position.z += (targetZ - camera.position.z) * 0.1;
+                camera.lookAt(player.mesh.position.x, player.mesh.position.y + 10, player.mesh.position.z);
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
