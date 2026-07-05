@@ -1,572 +1,225 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>City Drift - Mobile Driving Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>City Drift Game</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            overflow: hidden;
-            background: #000;
-        }
-
-        #gameContainer {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-
-        #canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .ui-overlay {
-            position: absolute;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-            pointer-events: none;
-        }
-
-        #hud {
-            bottom: 20px;
-            left: 20px;
-            width: 200px;
-        }
-
-        .hud-item {
-            margin: 8px 0;
-            background: rgba(0, 0, 0, 0.6);
-            padding: 8px 12px;
-            border-radius: 5px;
-            border-left: 4px solid #00d4ff;
-        }
-
-        .hud-label {
-            font-size: 11px;
-            color: #00d4ff;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .hud-value {
-            font-size: 18px;
-            color: #fff;
-            margin-top: 2px;
-        }
-
-        #minimap {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 150px;
-            height: 150px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #00d4ff;
-            border-radius: 5px;
-        }
-
-        #minimapCanvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        #missionInfo {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px 25px;
-            border-radius: 5px;
-            border-top: 3px solid #00d4ff;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        .mission-title {
-            font-size: 16px;
-            color: #00d4ff;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-        }
-
-        .mission-desc {
-            font-size: 12px;
-            color: #fff;
-            margin: 3px 0;
-        }
-
-        .mission-progress {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            margin-top: 8px;
-            overflow: hidden;
-        }
-
-        .mission-progress-bar {
-            height: 100%;
-            background: #00ff00;
-            width: 0%;
-            transition: width 0.2s;
-        }
-
-        #gasPump {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px 20px;
-            border-radius: 5px;
-            border: 2px solid #ff6600;
-            display: none;
-            pointer-events: auto;
-        }
-
-        #gasPump.show {
-            display: block;
-        }
-
-        #gasPumpBar {
-            width: 150px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 5px 0;
-        }
-
-        #gasPumpFill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff6600, #ffaa00);
-            width: 100%;
-            transition: width 0.1s;
-        }
-
-        #mainMenu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            pointer-events: auto;
-        }
-
-        #mainMenu.hidden {
-            display: none;
-            pointer-events: none;
-        }
-
-        .menu-title {
-            font-size: 48px;
-            font-weight: bold;
-            color: #00d4ff;
-            text-shadow: 0 0 20px #00d4ff;
-            margin-bottom: 30px;
-            letter-spacing: 2px;
-        }
-
-        .menu-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .menu-btn {
-            padding: 15px 40px;
-            font-size: 18px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            min-width: 200px;
-        }
-
-        .menu-btn-primary {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            color: white;
-        }
-
-        .menu-btn-primary:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px #00d4ff;
-        }
-
-        .menu-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: #00d4ff;
-            border: 2px solid #00d4ff;
-        }
-
-        .menu-btn-secondary:hover {
-            background: rgba(0, 212, 255, 0.2);
-        }
-
-        #garageMenu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            display: none;
-            flex-direction: column;
-            z-index: 999;
-            pointer-events: auto;
-            overflow-y: auto;
-        }
-
-        #garageMenu.show {
-            display: flex;
-        }
-
-        .garage-header {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            padding: 20px;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            position: sticky;
-            top: 0;
-        }
-
-        .garage-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            padding: 20px;
-            flex-grow: 1;
-        }
-
-        .car-card {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid #00d4ff;
-            border-radius: 5px;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: white;
-        }
-
-        .car-card:hover {
-            background: rgba(0, 212, 255, 0.2);
-            transform: scale(1.05);
-        }
-
-        .car-card.owned {
-            border-color: #00ff00;
-        }
-
-        .car-card.selected {
-            border-color: #ffaa00;
-            background: rgba(255, 170, 0, 0.2);
-        }
-
-        .car-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .car-price {
-            font-size: 12px;
-            color: #ffaa00;
-            margin: 5px 0;
-        }
-
-        .car-status {
-            font-size: 11px;
-            color: #00ff00;
-        }
-
-        .garage-footer {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 2px solid #00d4ff;
-        }
-
-        .wallet-info {
-            color: white;
-            font-weight: bold;
-        }
-
-        .wallet-amount {
-            color: #ffaa00;
-            font-size: 18px;
-        }
-
-        .close-btn {
-            background: #00d4ff;
-            color: black;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-
-        .close-btn:hover {
-            background: #0099cc;
-            transform: scale(1.05);
-        }
-
-        #gameOverScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 998;
-            pointer-events: auto;
-        }
-
-        #gameOverScreen.show {
-            display: flex;
-        }
-
-        .game-over-content {
-            text-align: center;
-            color: white;
-        }
-
-        .game-over-title {
-            font-size: 42px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #ff6600;
-        }
-
-        .game-over-title.success {
-            color: #00ff00;
-        }
-
-        .game-over-stats {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-size: 16px;
-        }
-
-        .stat-line {
-            margin: 10px 0;
-            color: #fff;
-        }
-
-        .stat-value {
-            color: #00d4ff;
-            font-weight: bold;
-        }
-
-        .game-over-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .game-over-btn {
-            padding: 12px 30px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-            text-transform: uppercase;
-        }
-
-        .btn-retry {
-            background: #00d4ff;
-            color: black;
-        }
-
-        .btn-retry:hover {
-            background: #0099cc;
-        }
-
-        .btn-menu {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 2px solid white;
-        }
-
-        .btn-menu:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        #controlsInfo {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 5px;
-            border: 2px solid #00d4ff;
-            color: #00d4ff;
-            font-size: 12px;
-            max-width: 200px;
-        }
-
-        .control-line {
-            margin: 3px 0;
-        }
-
-        @media (max-width: 768px) {
-            .menu-title {
-                font-size: 36px;
-            }
-
-            .menu-btn {
-                min-width: 150px;
-                padding: 12px 30px;
-            }
-
-            .garage-content {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            }
-
-            #hud {
-                left: 10px;
-                bottom: 10px;
-                width: 150px;
-                font-size: 12px;
-            }
-
-            #minimap {
-                width: 120px;
-                height: 120px;
-                right: 10px;
-                bottom: 10px;
-            }
-
-            .hud-value {
-                font-size: 14px;
-            }
-        }
+        * { margin:0; padding:0; }
+        body { overflow:hidden; background:#000; font-family:Arial; }
+        canvas { display:block; }
+        #ui { position:fixed; color:white; font-weight:bold; z-index:10; text-shadow:2px 2px 4px #000; }
+        #menu { position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#1a1a2e,#16213e); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:100; }
+        #menu.hidden { display:none; }
+        #menu h1 { font-size:48px; color:#00d4ff; margin-bottom:20px; text-shadow:0 0 20px #00d4ff; }
+        #menu button { padding:12px 30px; font-size:16px; margin:10px; cursor:pointer; border:none; border-radius:5px; background:#00d4ff; color:#000; font-weight:bold; transition:0.3s; }
+        #menu button:hover { transform:scale(1.05); }
+        #hud { bottom:20px; left:20px; }
+        .hud-item { margin:8px 0; background:rgba(0,0,0,0.6); padding:8px 12px; border-radius:5px; border-left:4px solid #00d4ff; }
+        #speedometer { bottom:20px; right:20px; background:rgba(0,0,0,0.6); padding:15px; border-radius:5px; border:2px solid #00d4ff; }
+        #controls { top:20px; right:20px; background:rgba(0,0,0,0.7); padding:15px; border:2px solid #00d4ff; border-radius:5px; font-size:12px; }
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="canvas"></canvas>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="menu">
+        <h1>🏎️ CITY DRIFT</h1>
+        <button onclick="game.start()">▶️ ابدأ اللعبة</button>
+    </div>
 
-        <div id="mainMenu">
-            <div class="menu-title">🏎️ CITY DRIFT</div>
-            <div class="menu-buttons">
-                <button class="menu-btn menu-btn-primary" onclick="game.startGame()">Play</button>
-                <button class="menu-btn menu-btn-secondary" onclick="game.openGarage()">Garage</button>
-                <button class="menu-btn menu-btn-secondary" onclick="game.showAchievements()">Achievements</button>
-            </div>
-        </div>
+    <div id="hud" class="ui">
+        <div class="hud-item">السرعة: <span id="speed">0</span> km/h</div>
+        <div class="hud-item">الوقود: <span id="fuel">100</span>%</div>
+        <div class="hud-item">المال: $<span id="money">1000</span></div>
+    </div>
 
-        <div id="garageMenu">
-            <div class="garage-header">
-                🚗 GARAGE
-                <button class="close-btn" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: auto;" onclick="game.closeGarage()">✕</button>
-            </div>
-            <div class="garage-content" id="garageContent"></div>
-            <div class="garage-footer">
-                <div class="wallet-info">
-                    Wallet: <span class="wallet-amount" id="walletDisplay">$0</span>
-                </div>
-                <button class="close-btn" onclick="game.closeGarage()">Back to Game</button>
-            </div>
-        </div>
+    <div id="speedometer" class="ui">
+        <div>🏎️ City Drift</div>
+        <div id="carName">City Runner</div>
+    </div>
 
-        <div id="gameOverScreen">
-            <div class="game-over-content">
-                <div class="game-over-title" id="gameOverTitle">Mission Failed</div>
-                <div class="game-over-stats" id="gameOverStats"></div>
-                <div class="game-over-buttons">
-                    <button class="game-over-btn btn-retry" onclick="game.retryMission()">Retry Mission</button>
-                    <button class="game-over-btn btn-menu" onclick="game.goToMenu()">Main Menu</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="hud" class="ui-overlay">
-            <div class="hud-item">
-                <div class="hud-label">Speed</div>
-                <div class="hud-value"><span id="speedValue">0</span> km/h</div>
-            </div>
-            <div class="hud-item">
-                <div class="hud-label">Fuel</div>
-                <div class="hud-value"><span id="fuelValue">100</span>%</div>
-            </div>
-            <div class="hud-item">
-                <div class="hud-label">Cash</div>
-                <div class="hud-value">$<span id="cashValue">0</span></div>
-            </div>
-            <div class="hud-item">
-                <div class="hud-label">Damage</div>
-                <div class="hud-value"><span id="damageValue">0</span>%</div>
-            </div>
-        </div>
-
-        <div id="minimap">
-            <canvas id="minimapCanvas"></canvas>
-        </div>
-
-        <div id="missionInfo">
-            <div class="mission-title" id="missionTitle">No Mission</div>
-            <div class="mission-desc" id="missionDesc">Select a mission to start</div>
-            <div class="mission-progress">
-                <div class="mission-progress-bar" id="missionProgressBar"></div>
-            </div>
-        </div>
-
-        <div id="gasPump">
-            <div style="text-align: center; margin-bottom: 5px;">⛽ Refueling...</div>
-            <div id="gasPumpBar">
-                <div id="gasPumpFill"></div>
-            </div>
-        </div>
-
-        <div id="controlsInfo">
-            <div class="control-line"><strong>Controls:</strong></div>
-            <div class="control-line">↑↓ Accelerate/Brake</div>
-            <div class="control-line">←→ Turn</div>
-            <div class="control-line">SPACE: Hand Brake</div>
-            <div class="control-line">C: Change Camera</div>
-            <div class="control-line">G: Garage</div>
-            <div class="control-line">M: Missions</div>
-            <div class="control-line">F: Refuel</div>
-        </div>
+    <div id="controls" class="ui">
+        <div><b>التحكم:</b></div>
+        <div>W - تسريع</div>
+        <div>S - فرملة</div>
+        <div>A - يسار</div>
+        <div>D - يمين</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="game.js"></script>
+    <script>
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87ceeb);
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 5000);
+                this.renderer = new THREE.WebGLRenderer({canvas:this.canvas, antialias:true});
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                
+                this.keys = {};
+                this.isRunning = false;
+                this.player = null;
+                this.money = 1000;
+                
+                window.addEventListener('keydown', (e)=>this.keys[e.key.toLowerCase()]=true);
+                window.addEventListener('keyup', (e)=>this.keys[e.key.toLowerCase()]=false);
+                window.addEventListener('resize', ()=>this.onResize());
+            }
+
+            start() {
+                document.getElementById('menu').classList.add('hidden');
+                this.isRunning = true;
+                this.setup();
+                this.animate();
+            }
+
+            setup() {
+                // Lights
+                const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+                this.scene.add(ambient);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                dirLight.position.set(100, 200, 50);
+                dirLight.castShadow = true;
+                this.scene.add(dirLight);
+
+                // Sky
+                const sky = new THREE.Mesh(new THREE.SphereGeometry(2000,32,32), new THREE.MeshBasicMaterial({color:0x87ceeb}));
+                this.scene.add(sky);
+
+                // Ground
+                const ground = new THREE.Mesh(new THREE.PlaneGeometry(2000,2000), new THREE.MeshLambertMaterial({color:0x2d5016}));
+                ground.rotation.x = -Math.PI/2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+
+                // Roads
+                const roadMat = new THREE.MeshLambertMaterial({color:0x333333});
+                const roadH = new THREE.Mesh(new THREE.PlaneGeometry(1500,80), roadMat);
+                roadH.rotation.x = -Math.PI/2;
+                roadH.position.y = 0.01;
+                this.scene.add(roadH);
+                const roadV = new THREE.Mesh(new THREE.PlaneGeometry(80,1500), roadMat);
+                roadV.rotation.x = -Math.PI/2;
+                roadV.position.y = 0.01;
+                this.scene.add(roadV);
+
+                // Buildings
+                const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0x5f27cd];
+                for(let i=0; i<15; i++) {
+                    const x = (Math.random()-0.5)*900;
+                    const z = (Math.random()-0.5)*900;
+                    if(Math.abs(x)<150 || Math.abs(z)<150) continue;
+                    const h = Math.random()*200+50;
+                    const b = new THREE.Mesh(new THREE.BoxGeometry(100,h,100), new THREE.MeshPhongMaterial({color:colors[Math.floor(Math.random()*colors.length)]}));
+                    b.position.set(x, h/2, z);
+                    b.castShadow = true;
+                    b.receiveShadow = true;
+                    this.scene.add(b);
+                }
+
+                // Player Car
+                this.createCar();
+                
+                // Traffic
+                for(let i=0; i<5; i++) {
+                    const c = new THREE.Mesh(new THREE.BoxGeometry(18,10,40), new THREE.MeshPhongMaterial({color:[0xff0000,0xffff00,0x0000ff][Math.floor(Math.random()*3)]}));
+                    c.position.set((Math.random()-0.5)*600, 12, (Math.random()-0.5)*600);
+                    c.castShadow = true;
+                    this.scene.add(c);
+                }
+            }
+
+            createCar() {
+                const group = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(20,12,45), new THREE.MeshPhongMaterial({color:0x00ff00}));
+                body.castShadow = true;
+                body.receiveShadow = true;
+                group.add(body);
+
+                const window1 = new THREE.Mesh(new THREE.BoxGeometry(18,8,10), new THREE.MeshPhongMaterial({color:0x87ceeb, transparent:true, opacity:0.6}));
+                window1.position.z = -12;
+                group.add(window1);
+
+                for(let i=0; i<4; i++) {
+                    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(7,7,10,16), new THREE.MeshPhongMaterial({color:0x222222}));
+                    wheel.rotation.z = Math.PI/2;
+                    wheel.castShadow = true;
+                    wheel.position.set(i%2?14:-14, 9, i<2?-15:15);
+                    group.add(wheel);
+                }
+
+                group.position.set(0, 15, 0);
+                group.castShadow = true;
+                this.scene.add(group);
+
+                this.player = {
+                    mesh: group,
+                    speed: 0,
+                    maxSpeed: 150,
+                    accel: 1,
+                    friction: 0.08,
+                    rotSpeed: 0.05,
+                    fuel: 100
+                };
+            }
+
+            animate() {
+                requestAnimationFrame(()=>this.animate());
+                if(!this.isRunning || !this.player) return;
+
+                // Input
+                const w = this.keys['w']||this.keys['arrowup']?1:0;
+                const s = this.keys['s']||this.keys['arrowdown']?1:0;
+                const a = this.keys['a']||this.keys['arrowleft']?1:0;
+                const d = this.keys['d']||this.keys['arrowright']?1:0;
+
+                // Physics
+                this.player.speed += (w-s)*this.player.accel;
+                this.player.speed = Math.max(-50, Math.min(this.player.speed, this.player.maxSpeed));
+                this.player.speed *= (1-this.player.friction);
+
+                if(this.player.speed > 1) this.player.mesh.rotation.y += (a-d)*this.player.rotSpeed;
+
+                const dir = new THREE.Vector3(0,0,this.player.speed);
+                dir.applyAxisAngle(new THREE.Vector3(0,1,0), this.player.mesh.rotation.y);
+                this.player.mesh.position.add(dir);
+
+                if(w>0) this.player.fuel -= 0.1;
+                this.player.fuel = Math.max(0, Math.min(100, this.player.fuel));
+
+                this.player.mesh.position.x = Math.max(-400, Math.min(400, this.player.mesh.position.x));
+                this.player.mesh.position.z = Math.max(-400, Math.min(400, this.player.mesh.position.z));
+
+                // Update UI
+                document.getElementById('speed').textContent = Math.round(Math.abs(this.player.speed));
+                document.getElementById('fuel').textContent = Math.round(this.player.fuel);
+                document.getElementById('money').textContent = Math.round(this.money);
+
+                // Camera
+                const p = this.player.mesh.position;
+                const tx = p.x - Math.sin(this.player.mesh.rotation.y)*80;
+                const ty = p.y + 40;
+                const tz = p.z - Math.cos(this.player.mesh.rotation.y)*80;
+
+                this.camera.position.x += (tx - this.camera.position.x)*0.1;
+                this.camera.position.y += (ty - this.camera.position.y)*0.1;
+                this.camera.position.z += (tz - this.camera.position.z)*0.1;
+                this.camera.lookAt(p.x, p.y+10, p.z);
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onResize() {
+                this.camera.aspect = window.innerWidth/window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
+        const game = new Game();
+    </script>
 </body>
 </html>
