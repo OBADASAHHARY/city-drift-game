@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏎️ City Drift - لعبة القيادة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            pointer-events: none;
+        }
+
+        #hud {
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+        }
+
+        .hud-item {
+            margin: 8px 0;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 5px;
+            border-left: 4px solid #00d4ff;
+        }
+
+        .hud-label {
+            font-size: 11px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hud-value {
+            font-size: 18px;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00d4ff;
+            border-radius: 5px;
+        }
+
+        #minimapCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #missionInfo {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 5px;
+            border-top: 3px solid #00d4ff;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .mission-title {
+            font-size: 16px;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .mission-desc {
+            font-size: 12px;
+            color: #fff;
+            margin: 3px 0;
+        }
+
+        .mission-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .mission-progress-bar {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        #mainMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        #mainMenu.hidden {
+            display: none;
+            pointer-events: none;
+        }
+
+        .menu-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00d4ff;
+            text-shadow: 0 0 20px #00d4ff;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .menu-btn {
+            padding: 15px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 200px;
+        }
+
+        .menu-btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: white;
+        }
+
+        .menu-btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #00d4ff;
+        }
+
+        .menu-btn-secondary {
+            background: rgba(255, 255, 255, 0.1);\n            color: #00d4ff;
+            border: 2px solid #00d4ff;
+        }
+
+        .menu-btn-secondary:hover {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        #garageMenu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+            pointer-events: auto;
+            overflow-y: auto;
+        }
+
+        #garageMenu.show {
+            display: flex;
+        }
+
+        .garage-header {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            padding: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            position: sticky;
+            top: 0;
+        }
+
+        .garage-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .car-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00d4ff;
+            border-radius: 5px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .car-card:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .car-card.owned {
+            border-color: #00ff00;
+        }
+
+        .car-card.selected {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.2);
+        }
+
+        .car-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .car-price {
+            font-size: 12px;
+            color: #ffaa00;
+            margin: 5px 0;
+        }
+
+        .car-status {
+            font-size: 11px;
+            color: #00ff00;
+        }
+
+        .garage-footer {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 2px solid #00d4ff;
+        }
+
+        .wallet-info {
+            color: white;
+            font-weight: bold;
+        }
+
+        .wallet-amount {
+            color: #ffaa00;
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: #00d4ff;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: #0099cc;
+            transform: scale(1.05);
+        }
+
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 998;
+            pointer-events: auto;
+        }
+
+        #gameOverScreen.show {
+            display: flex;
+        }
+
+        .game-over-content {
+            text-align: center;
+            color: white;
+        }
+
+        .game-over-title {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #ff6600;
+        }
+
+        .game-over-title.success {
+            color: #00ff00;
+        }
+
+        .game-over-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+
+        .stat-line {
+            margin: 10px 0;
+            color: #fff;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        .game-over-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .game-over-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-retry {
+            background: #00d4ff;
+            color: black;
+        }
+
+        .btn-retry:hover {
+            background: #0099cc;
+        }
+
+        .btn-menu {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-menu:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #controlsInfo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            font-size: 12px;
+            max-width: 200px;
+        }
+
+        .control-line {
+            margin: 3px 0;
+        }
+
+        @media (max-width: 768px) {
+            .menu-title {
+                font-size: 36px;
+            }
+
+            .menu-btn {
+                min-width: 150px;
+                padding: 12px 30px;
+            }
+
+            .garage-content {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+
+            #hud {
+                left: 10px;
+                bottom: 10px;
+                width: 150px;
+                font-size: 12px;
+            }
+
+            #minimap {
+                width: 120px;
+                height: 120px;
+                right: 10px;
+                bottom: 10px;
+            }
+
+            .hud-value {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id=\"gameContainer\">
+        <canvas id=\"canvas\"></canvas>
+
+        <div id=\"mainMenu\">
+            <div class=\"menu-title\">🏎️ CITY DRIFT</div>
+            <div class=\"menu-buttons\">
+                <button class=\"menu-btn menu-btn-primary\" onclick=\"game.startGame()\">▶️ ابدأ اللعبة</button>
+                <button class=\"menu-btn menu-btn-secondary\" onclick=\"game.openGarage()\">🚗 المرآب</button>
+                <button class=\"menu-btn menu-btn-secondary\" onclick=\"game.showAchievements()\">🏆 الإنجازات</button>
+            </div>
+        </div>
+
+        <div id=\"garageMenu\">
+            <div class=\"garage-header\">
+                🚗 المرآب
+                <button class=\"close-btn\" style=\"position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: auto;\" onclick=\"game.closeGarage()\">✕</button>
+            </div>
+            <div class=\"garage-content\" id=\"garageContent\"></div>
+            <div class=\"garage-footer\">
+                <div class=\"wallet-info\">
+                    المحفظة: <span class=\"wallet-amount\" id=\"walletDisplay\">$0</span>
+                </div>
+                <button class=\"close-btn\" onclick=\"game.closeGarage()\">العودة</button>
+            </div>
+        </div>
+
+        <div id=\"gameOverScreen\">
+            <div class=\"game-over-content\">
+                <div class=\"game-over-title\" id=\"gameOverTitle\">انتهت المهمة</div>
+                <div class=\"game-over-stats\" id=\"gameOverStats\"></div>
+                <div class=\"game-over-buttons\">
+                    <button class=\"game-over-btn btn-retry\" onclick=\"game.retryMission()\">🔄 إعادة محاولة</button>
+                    <button class=\"game-over-btn btn-menu\" onclick=\"game.goToMenu()\">🏠 الرئيسية</button>
+                </div>
+            </div>
+        </div>
+
+        <div id=\"hud\" class=\"ui-overlay\">
+            <div class=\"hud-item\">
+                <div class=\"hud-label\">السرعة</div>
+                <div class=\"hud-value\"><span id=\"speedValue\">0</span> km/h</div>
+            </div>
+            <div class=\"hud-item\">
+                <div class=\"hud-label\">الوقود</div>
+                <div class=\"hud-value\"><span id=\"fuelValue\">100</span>%</div>
+            </div>
+            <div class=\"hud-item\">
+                <div class=\"hud-label\">الأموال</div>
+                <div class=\"hud-value\">$<span id=\"cashValue\">0</span></div>
+            </div>
+            <div class=\"hud-item\">
+                <div class=\"hud-label\">الأضرار</div>
+                <div class=\"hud-value\"><span id=\"damageValue\">0</span>%</div>
+            </div>
+        </div>
+
+        <div id=\"minimap\">
+            <canvas id=\"minimapCanvas\"></canvas>
+        </div>
+
+        <div id=\"missionInfo\">
+            <div class=\"mission-title\" id=\"missionTitle\">لا توجد مهمة</div>
+            <div class=\"mission-desc\" id=\"missionDesc\">اختر مهمة لتبدأ</div>
+            <div class=\"mission-progress\">
+                <div class=\"mission-progress-bar\" id=\"missionProgressBar\"></div>
+            </div>
+        </div>
+
+        <div id=\"controlsInfo\">
+            <div class=\"control-line\"><strong>التحكم:</strong></div>\n            <div class=\"control-line\">⬆️⬇️ تسريع / فرملة</div>
+            <div class=\"control-line\">⬅️➡️ دوران</div>
+            <div class=\"control-line\">SPACE: فرملة يد</div>
+            <div class=\"control-line\">C: تغيير الكاميرا</div>
+            <div class=\"control-line\">G: المرآب</div>
+            <div class=\"control-line\">M: المهام</div>
+        </div>
+    </div>
+
+    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js\"></script>
+    <script>\n// City Drift Game - Full Implementation\nclass CityDriftGame {\n    constructor() {\n        this.scene = new THREE.Scene();\n        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);\n        this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true, alpha: true });\n        this.renderer.setSize(window.innerWidth, window.innerHeight);\n        this.renderer.shadowMap.enabled = true;\n        this.renderer.setClearColor(0x87ceeb);\n\n        this.gameState = 'MENU';\n        this.player = null;\n        this.city = null;\n        this.traffic = [];\n        this.missions = [];\n        this.currentMission = null;\n        this.cash = 1000;\n        this.keys = {};\n        \n        this.cars = [\n            { id: 0, name: 'City Runner', price: 0, color: 0x00ff00, speed: 180, handling: 0.8, owned: true },\n            { id: 1, name: 'Swift Sedan', price: 5000, color: 0xff0000, speed: 200, handling: 0.75, owned: false },\n            { id: 2, name: 'Sport Racer', price: 15000, color: 0xffaa00, speed: 280, handling: 0.9, owned: false },\n            { id: 3, name: 'Turbo Beast', price: 45000, color: 0xff0066, speed: 340, handling: 0.88, owned: false },\n        ];\n        this.selectedCarId = 0;\n        \n        this.loadGameData();\n        this.setupInputHandlers();\n        this.setupScene();\n    }\n\n    setupInputHandlers() {\n        window.addEventListener('keydown', (e) => {\n            this.keys[e.key.toLowerCase()] = true;\n            if (e.key === 'c' || e.key === 'C') this.toggleCamera();\n            if (e.key === 'g' || e.key === 'G') this.toggleGarage();\n            if (e.key === 'm' || e.key === 'M') this.showMissions();\n        });\n        window.addEventListener('keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });\n        window.addEventListener('resize', () => this.onWindowResize());\n    }\n\n    setupScene() {\n        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);\n        this.scene.add(ambientLight);\n\n        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);\n        directionalLight.position.set(100, 200, 100);\n        directionalLight.castShadow = true;\n        this.scene.add(directionalLight);\n\n        const skyGeometry = new THREE.SphereGeometry(2000, 32, 32);\n        const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x87ceeb });\n        const sky = new THREE.Mesh(skyGeometry, skyMaterial);\n        this.scene.add(sky);\n\n        this.createCity();\n        this.createPlayerCar();\n        this.spawnTraffic();\n        this.createMissions();\n    }\n\n    createCity() {\n        this.city = { roads: [], buildings: [] };\n\n        for (let x = -400; x <= 400; x += 100) {\n            const roadGeom = new THREE.PlaneGeometry(1000, 30);\n            const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });\n            const road = new THREE.Mesh(roadGeom, roadMat);\n            road.rotation.x = -Math.PI / 2;\n            road.position.set(x, 0, 0);\n            this.scene.add(road);\n        }\n\n        for (let z = -400; z <= 400; z += 100) {\n            const roadGeom = new THREE.PlaneGeometry(30, 1000);\n            const roadMat = new THREE.MeshLambertMaterial({ color: 0x333333 });\n            const road = new THREE.Mesh(roadGeom, roadMat);\n            road.rotation.x = -Math.PI / 2;\n            road.position.set(0, 0, z);\n            this.scene.add(road);\n        }\n\n        const buildingColors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b731, 0x5f27cd];\n        for (let x = -500; x <= 500; x += 120) {\n            for (let z = -500; z <= 500; z += 120) {\n                if (Math.abs(x) < 100 || Math.abs(z) < 100) continue;\n                const height = Math.random() * 150 + 50;\n                const buildingGeom = new THREE.BoxGeometry(80, height, 80);\n                const buildingMat = new THREE.MeshPhongMaterial({ color: buildingColors[Math.floor(Math.random() * buildingColors.length)] });\n                const building = new THREE.Mesh(buildingGeom, buildingMat);\n                building.position.set(x, height / 2, z);\n                this.scene.add(building);\n            }\n        }\n    }\n\n    createPlayerCar() {\n        const carData = this.cars[this.selectedCarId];\n        const carGroup = new THREE.Group();\n\n        const bodyGeom = new THREE.BoxGeometry(20, 10, 40);\n        const bodyMat = new THREE.MeshPhongMaterial({ color: carData.color });\n        const body = new THREE.Mesh(bodyGeom, bodyMat);\n        carGroup.add(body);\n\n        const wheelGeom = new THREE.CylinderGeometry(6, 6, 8, 16);\n        const wheelMat = new THREE.MeshPhongMaterial({ color: 0x222222 });\n        for (let i = 0; i < 4; i++) {\n            const wheel = new THREE.Mesh(wheelGeom, wheelMat);\n            wheel.rotation.z = Math.PI / 2;\n            const isLeft = i % 2 === 0;\n            const isFront = i < 2;\n            wheel.position.set(isLeft ? -12 : 12, 8, isFront ? -15 : 15);\n            carGroup.add(wheel);\n        }\n\n        carGroup.position.set(0, 10, 0);\n        carGroup.scale.set(0.8, 0.8, 0.8);\n        this.scene.add(carGroup);\n\n        this.player = {\n            object: carGroup,\n            speed: 0,\n            maxSpeed: carData.speed,\n            acceleration: 0.3,\n            friction: 0.05,\n            fuel: 100,\n            damage: 0,\n            money: this.cash\n        };\n    }\n\n    spawnTraffic() {\n        for (let i = 0; i < 8; i++) {\n            const x = (Math.random() - 0.5) * 600;\n            const z = (Math.random() - 0.5) * 600;\n            const color = [0xff0000, 0xffff00, 0x0000ff][Math.floor(Math.random() * 3)];\n\n            const carGroup = new THREE.Group();\n            const bodyGeom = new THREE.BoxGeometry(16, 8, 32);\n            const bodyMat = new THREE.MeshPhongMaterial({ color: color });\n            const body = new THREE.Mesh(bodyGeom, bodyMat);\n            carGroup.add(body);\n\n            carGroup.position.set(x, 8, z);\n            this.scene.add(carGroup);\n\n            this.traffic.push({\n                object: carGroup,\n                speed: 0,\n                maxSpeed: 120\n            });\n        }\n    }\n\n    createMissions() {\n        this.missions = [\n            { title: 'Delivery', desc: 'وصّل الصندوق', target: new THREE.Vector3(300, 0, 300), reward: 500 },\n            { title: 'Passenger', desc: 'اخذ الراكب', target: new THREE.Vector3(-250, 0, 250), reward: 400 },\n            { title: 'Speed Race', desc: 'اصل قبل انتهاء الوقت', target: new THREE.Vector3(-300, 0, -300), reward: 600 },\n        ];\n    }\n\n    startGame() {\n        document.getElementById('mainMenu').classList.add('hidden');\n        this.gameState = 'PLAYING';\n        this.animate();\n    }\n\n    animate() {\n        requestAnimationFrame(() => this.animate());\n\n        if (this.gameState === 'PLAYING') {\n            this.updatePlayer();\n            this.updateCamera();\n            this.updateHUD();\n        }\n\n        this.renderer.render(this.scene, this.camera);\n    }\n\n    updatePlayer() {\n        if (!this.player) return;\n\n        const accel = this.keys['arrowup'] || this.keys['w'] ? 1 : 0;\n        const decel = this.keys['arrowdown'] || this.keys['s'] ? 1 : 0;\n        const left = this.keys['arrowleft'] || this.keys['a'] ? 1 : 0;\n        const right = this.keys['arrowright'] || this.keys['d'] ? 1 : 0;\n\n        this.player.speed += (accel - decel) * this.player.acceleration;\n        this.player.speed = Math.max(-100, Math.min(this.player.speed, this.player.maxSpeed));\n        this.player.speed *= (1 - this.player.friction);\n\n        if (this.player.speed > 1) {\n            this.player.object.rotation.y += (left - right) * 0.08;\n        }\n\n        if (accel > 0) this.player.fuel -= 0.02;\n        this.player.fuel = Math.max(0, this.player.fuel);\n\n        const direction = new THREE.Vector3(0, 0, this.player.speed);\n        direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.player.object.rotation.y);\n        this.player.object.position.add(direction);\n\n        this.player.object.position.x = Math.max(-450, Math.min(450, this.player.object.position.x));\n        this.player.object.position.z = Math.max(-450, Math.min(450, this.player.object.position.z));\n    }\n\n    updateCamera() {\n        if (!this.player) return;\n        const pos = this.player.object.position;\n        const targetX = pos.x - Math.sin(this.player.object.rotation.y) * 60;\n        const targetZ = pos.z - Math.cos(this.player.object.rotation.y) * 60;\n\n        this.camera.position.x += (targetX - this.camera.position.x) * 0.1;\n        this.camera.position.y += (pos.y + 30 - this.camera.position.y) * 0.1;\n        this.camera.position.z += (targetZ - this.camera.position.z) * 0.1;\n        this.camera.lookAt(pos.x, pos.y + 5, pos.z);\n    }\n\n    updateHUD() {\n        if (!this.player) return;\n        document.getElementById('speedValue').textContent = Math.round(Math.abs(this.player.speed));\n        document.getElementById('fuelValue').textContent = Math.round(this.player.fuel);\n        document.getElementById('cashValue').textContent = Math.round(this.player.money);\n        document.getElementById('damageValue').textContent = Math.round(this.player.damage);\n    }\n\n    toggleCamera() {\n        // Camera toggle functionality\n    }\n\n    toggleGarage() {\n        if (this.gameState === 'PLAYING') {\n            this.gameState = 'PAUSED';\n            this.openGarage();\n        }\n    }\n\n    openGarage() {\n        document.getElementById('garageMenu').classList.add('show');\n        document.getElementById('walletDisplay').textContent = this.cash;\n        this.populateGarage();\n    }\n\n    populateGarage() {\n        const garageContent = document.getElementById('garageContent');\n        garageContent.innerHTML = '';\n\n        this.cars.forEach(car => {\n            const card = document.createElement('div');\n            card.className = 'car-card';\n            if (car.owned) card.classList.add('owned');\n            if (car.id === this.selectedCarId && car.owned) card.classList.add('selected');\n\n            card.innerHTML = `<div class=\"car-name\">${car.name}</div><div class=\"car-price\">${car.owned ? '✓ مملوكة' : '$' + car.price}</div>`;\n            card.onclick = () => {\n                if (!car.owned && this.cash >= car.price) {\n                    this.cash -= car.price;\n                    car.owned = true;\n                    this.populateGarage();\n                } else if (car.owned) {\n                    this.selectedCarId = car.id;\n                    this.recreatePlayerCar();\n                    this.populateGarage();\n                }\n            };\n            garageContent.appendChild(card);\n        });\n    }\n\n    recreatePlayerCar() {\n        if (this.player?.object) {\n            this.scene.remove(this.player.object);\n        }\n        this.createPlayerCar();\n    }\n\n    closeGarage() {\n        document.getElementById('garageMenu').classList.remove('show');\n        this.gameState = 'PLAYING';\n        this.saveGameData();\n    }\n\n    showMissions() {\n        if (!this.currentMission) {\n            this.currentMission = this.missions[Math.floor(Math.random() * this.missions.length)];\n        }\n    }\n\n    showAchievements() {\n        alert('الإنجازات:\\n- أكمل 5 مهام\\n- اجمع $10,000\\n- اجمع كل السيارات');\n    }\n\n    retryMission() {\n        document.getElementById('gameOverScreen').classList.remove('show');\n        this.gameState = 'PLAYING';\n    }\n\n    goToMenu() {\n        document.getElementById('gameOverScreen').classList.remove('show');\n        document.getElementById('mainMenu').classList.remove('hidden');\n        this.gameState = 'MENU';\n    }\n\n    saveGameData() {\n        const data = { cash: this.cash, selectedCarId: this.selectedCarId, cars: this.cars };\n        localStorage.setItem('cityDriftSave', JSON.stringify(data));\n    }\n\n    loadGameData() {\n        const saved = localStorage.getItem('cityDriftSave');\n        if (saved) {\n            const data = JSON.parse(saved);\n            this.cash = data.cash;\n            this.selectedCarId = data.selectedCarId;\n        }\n    }\n\n    onWindowResize() {\n        this.camera.aspect = window.innerWidth / window.innerHeight;\n        this.camera.updateProjectionMatrix();\n        this.renderer.setSize(window.innerWidth, window.innerHeight);\n    }\n}\n\nconst game = new CityDriftGame();\n    </script>\n</body>\n</html>
